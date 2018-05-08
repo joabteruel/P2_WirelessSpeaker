@@ -19,6 +19,7 @@
 #include "queue.h"
 #include "event_groups.h"
 #include "board.h"
+#include "semphr.h"
 
 #include "PIT_handler.h"
 
@@ -26,7 +27,7 @@
 
 #define UDP_PORT 50005
 
-#define BUFFER_SIZE 220
+#define BUFFER_SIZE 147
 
 void os_init(void);
 void UDP_receive(void *arg);

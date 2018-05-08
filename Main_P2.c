@@ -161,7 +161,7 @@ int main(void)
     if(sys_thread_new("main", stack_init, NULL, INIT_THREAD_STACKSIZE, INIT_THREAD_PRIO) == NULL)
         LWIP_ASSERT("main(): Task creation failed.", 0);
 
-    xTaskCreate(sample_Playback, "samplePlayback", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    xTaskCreate(sample_Playback, "samplePlayback", 300, NULL, 2, NULL);
 
     vTaskStartScheduler();
 
