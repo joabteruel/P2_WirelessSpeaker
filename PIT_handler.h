@@ -10,7 +10,7 @@
 
 #include "fsl_pit.h"
 
-#define SAMPLE_PERIOD_US 22
+#define SAMPLE_PERIOD_US 45
 
 void initPIT(void);
 

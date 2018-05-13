@@ -27,7 +27,7 @@
 
 #define UDP_PORT 50005
 
-#define BUFFER_SIZE 147
+#define BUFFER_SIZE 250
 
 void os_init(void);
 void UDP_receive(void *arg);
