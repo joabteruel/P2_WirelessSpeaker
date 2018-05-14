@@ -136,7 +136,7 @@ static void stack_init(void *arg)
            ((u8_t *)&fsl_netif0_gw)[2], ((u8_t *)&fsl_netif0_gw)[3]);
     PRINTF("************************************************\r\n");
 
-	sys_thread_new("UDP_receive", UDP_receive, NULL, 300, 2);
+	sys_thread_new("UDP_receive", UDP_receive, NULL, 1024, 2);
 
     vTaskDelete(NULL);
 }
@@ -161,7 +161,7 @@ int main(void)
     if(sys_thread_new("main", stack_init, NULL, INIT_THREAD_STACKSIZE, INIT_THREAD_PRIO) == NULL)
         LWIP_ASSERT("main(): Task creation failed.", 0);
 
-    xTaskCreate(sample_Playback, "samplePlayback", 300, NULL, 2, NULL);
+    xTaskCreate(sample_Playback, "samplePlayback", 500, NULL, 2, NULL);
 
     vTaskStartScheduler();
 

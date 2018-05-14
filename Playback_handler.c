@@ -19,6 +19,8 @@ TaskHandle_t samplerTask_handle;
 uint16_t buffer_A[BUFFER_SIZE];
 uint16_t buffer_B[BUFFER_SIZE];
 
+bool flag=false;
+
 
 void os_init(void)
 {
@@ -31,10 +33,7 @@ void os_init(void)
 void SampleInterrupt()
 {
 	PIT_ClearStatusFlags(PIT, kPIT_Chnl_0, kPIT_TimerFlag);
-	//PIT_StopTimer(PIT, kPIT_Chnl_0);
-	//xEventGroupSetBitsFromISR(interruptStatus_event, SAMPLE_INTERRUPT, pdFALSE);
 	xSemaphoreGiveFromISR(sampleNow_sem,pdFALSE);
-	//vTaskNotifyGiveFromISR(samplerTask_handle, pdFALSE);
 	portYIELD_FROM_ISR(pdTRUE);
 }
 
@@ -60,18 +59,17 @@ void UDP_receive(void *arg)
 			netconn_recv(conn, &buf);
 
 			/*If buffer B is being sampled, fill buffer A with data*/
-			if(((buffStatus_event & BUFFER_A_SAMPLING)) == BUFFER_A_SAMPLING)
+			if((buffStatus_event & BUFFER_A_SAMPLING) == BUFFER_A_SAMPLING)
 			{
-				//netbuf_data(buf, (void**)&recBuff_A.msg, &recBuff_A.len);
+				xEventGroupClearBits(bufferStatus_event, BUFFER_A_SAMPLING);
 				netbuf_copy(buf, buffer_A, sizeof(buffer_A));
-				//PRINTF("Buffer A FULL\n\r");
 				netbuf_delete(buf);
 			}
 			/*Otherwise buffer A is being sampled, so fill buffer B with data*/
 			else
 			{
+				xEventGroupSetBits(bufferStatus_event, BUFFER_A_SAMPLING);
 				netbuf_copy(buf, buffer_B, sizeof(buffer_B));
-				//PRINTF("Buffer B FULL\n\r");
 				netbuf_delete(buf);
 			}
 			xEventGroupSetBits(bufferStatus_event, BUFFER_FULL);
@@ -92,59 +90,35 @@ void sample_Playback(void * params)
 	while(1)
 	{
 		/*The sampling signal semaphore is now available*/
-//		xEventGroupWaitBits(interruptStatus_event, SAMPLE_INTERRUPT, pdTRUE, pdTRUE, portMAX_DELAY);
 		if(pdTRUE == xSemaphoreTake(sampleNow_sem, portMAX_DELAY))
 		{
-			GPIO_PortToggle(GPIOC, 1<<3);
-
-			/*If we've sampled the whole buffer*/
-			if (BUFFER_SIZE == actualSampleCount)
-			{
-				xEventGroupClearBits(bufferStatus_event, BUFFER_FULL);
-				actualSampleCount = 0;
-//				if ((buffStatus_event & BUFFER_FULL) == BUFFER_FULL)
-//				{
-					/*If previous sampling buffer was A buffer swap for B buffer*/
-					if ((buffStatus_event & BUFFER_A_SAMPLING)
-							== BUFFER_A_SAMPLING)
-					{
-						xEventGroupClearBits(bufferStatus_event,
-								BUFFER_A_SAMPLING);
-						xEventGroupSetBits(bufferStatus_event,
-								BUFFER_B_SAMPLING);
-					}
-					/*Otherwise, swap B buffer by A buffer*/
-					else
-					{
-						xEventGroupClearBits(bufferStatus_event,
-								BUFFER_B_SAMPLING);
-						xEventGroupSetBits(bufferStatus_event,
-								BUFFER_A_SAMPLING);
-					}
-				}
-			}
-
 			buffStatus_event = xEventGroupGetBits(bufferStatus_event);
 			if((BUFFER_FULL & buffStatus_event) == BUFFER_FULL)
 			{
 				/*If current sampling buffer is A buffer keep sampling A buffer*/
-				if ((buffStatus_event & BUFFER_A_SAMPLING) == BUFFER_A_SAMPLING)
+				if((buffStatus_event & BUFFER_A_SAMPLING) != BUFFER_A_SAMPLING)
 				{
 					//PRINTF("Buffer A[%d] -> %d\r\n",actualSampleCount, buffer_A[actualSampleCount]);
-					DAC_SetBufferValue(DAC0, 0U, buffer_A[actualSampleCount]);
+					DAC_SetBufferValue(DAC0, 0U, ((buffer_A[actualSampleCount]+32768)>>4));
 					buffer_A[actualSampleCount] = 0;
 				}
 				/*Otherwise is buffer B the one which is currently being samplingr*/
-				if ((buffStatus_event & BUFFER_B_SAMPLING) == BUFFER_B_SAMPLING)
+				else
 				{
 					//PRINTF("Buffer B[%d] -> %d\r\n", actualSampleCount, buffer_B[actualSampleCount]);
-					DAC_SetBufferValue(DAC0, 0U, buffer_B[actualSampleCount]);
+					DAC_SetBufferValue(DAC0, 0U, ((buffer_B[actualSampleCount]+32768)>>4));
 					buffer_A[actualSampleCount] = 0;
 				}
-				actualSampleCount++;
+
+				if(BUFFER_SIZE > actualSampleCount)
+				{
+					actualSampleCount++;
+				}else
+				{
+					actualSampleCount = 0;
+					xEventGroupClearBits(bufferStatus_event, BUFFER_FULL);
+				}
 			}
-
-
-//		}
+		}
 	}
 }
